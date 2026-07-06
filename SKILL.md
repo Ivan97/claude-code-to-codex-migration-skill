@@ -13,6 +13,7 @@ Use only for Claude Code -> Codex migration. The first priority is protecting th
 - Default to the current working directory as the project context. If `~/.claude.json` has multiple matching project entries, ask the user to choose.
 - Require confirmation before any write. Confirm high-risk resources separately: permissions, hooks, MCP secrets/env/headers, plugin or marketplace changes, and all conflicts.
 - Explain the plan by scope: user-level, project-shared, and project-local. List what migrates, what is skipped, where it goes, and any conflicts.
+- The migration plan must explicitly say how many parts or steps it contains. For each part, state whether it is suitable to migrate, not suitable to migrate, or requires manual conversion, and include the reason.
 - Never migrate auth state, OAuth/session files, managed settings, remote settings, trust caches, approval state, runtime caches, or unknown state/cache files.
 - Only write targets listed in `references/mapping.md`. Report unknown, unsupported, invalid, and empty fields unless the mapping gives an explicit migration rule.
 - Generate a final migration report whether or not files were written.
@@ -31,10 +32,14 @@ Use `--format json` when machine-readable output is useful. When the user asks t
 
 3. Present a migration plan containing:
 
+- Total number of migration parts or steps.
+- A numbered section for each part.
 - Source files found.
 - Target files that would be touched.
 - User-level, project-shared, and project-local resources to migrate or skip.
 - Known-project memory files when `--include-known-project-memories` was requested.
+- Suitability for each resource group: suitable to migrate, not suitable to migrate, or requires manual conversion.
+- Reasons for every skipped, report-only, unsupported, unknown, risky, or manual-conversion item.
 - Resources already in Codex-compatible locations.
 - Recommended project and target paths.
 - Conflicts and choices.
@@ -43,6 +48,34 @@ Use `--format json` when machine-readable output is useful. When the user asks t
 - Hook event names, matchers, commands/prompts, target file, and allowed variable replacements.
 
 4. Ask for confirmation. Low-risk copy-only items can be grouped by scope. High-risk resources require separate confirmation. Do not ask only "migrate everything"; show the source, target, scope, and resource type.
+
+## Migration Plan Format
+
+Use this structure when presenting the plan:
+
+```markdown
+## Migration Plan
+
+This migration is divided into <N> parts.
+
+### Part 1: <name>
+- Scope: <user-level | project-shared | project-local | known-project memory>
+- Source: `<path or source description>`
+- Target: `<path or target description>`
+- Suitability: <suitable | not suitable | requires manual conversion | already compatible>
+- Reason: <why this classification is correct>
+- Proposed action: <copy | convert | report only | skip | ask user to choose>
+- Risk/confirmation: <none | requires confirmation | high-risk separate confirmation>
+
+### Part 2: <name>
+...
+
+## Items Not Suitable For Migration
+- `<source>`: <reason>
+
+## Confirmation Request
+- Confirm each approved part by number. Do not proceed on unconfirmed parts.
+```
 
 5. Execute only approved items:
 

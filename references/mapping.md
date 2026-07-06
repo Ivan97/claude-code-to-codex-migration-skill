@@ -49,6 +49,30 @@ Migration plans and confirmations must be separated by scope:
 
 Confirmation must list resource type, source path, target path, and conflicts for each scope. Do not replace this with a vague "migrate all" confirmation.
 
+## Migration Plan Requirements
+
+Every migration plan must be numbered and explicit:
+
+- State the total number of parts or steps.
+- Give each part a name and scope.
+- List source path, target path, proposed action, and required confirmation.
+- Classify each part as `suitable`, `not suitable`, `requires manual conversion`, or `already compatible`.
+- Explain the reason for that classification.
+- Put all report-only, unsupported, unknown, empty, risky, or skipped items in a separate section with reasons.
+- Ask the user to approve specific part numbers or resource groups before writing anything.
+
+Recommended high-level parts:
+
+1. Memory / instructions.
+2. MCP servers.
+3. Settings and permissions.
+4. Hooks.
+5. Skills.
+6. Agents.
+7. Commands and output styles.
+8. Plugins and marketplaces.
+9. Known-project memories, only when requested.
+
 ## MCP
 
 Recommended handling:

@@ -66,11 +66,25 @@ node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD" --include-known-
 这个 skill 会按下面的顺序工作：
 
 1. 只读检查 Claude Code 源配置和 Codex 目标位置。
-2. 按 scope 拆分迁移计划：用户级、项目共享级、项目本地级、已知项目 memory。
-3. 列出可迁移项、需要确认项、冲突项、只报告项、不支持项、未知字段和空值跳过项。
-4. 对高风险资源单独要求确认：permissions、hooks、MCP secrets/env/headers、插件/marketplace、所有冲突。
-5. 只执行用户批准的迁移项。
-6. 输出最终迁移报告。
+2. 生成迁移计划，并明确说明一共分为几部分或几步。
+3. 按 scope 拆分迁移计划：用户级、项目共享级、项目本地级、已知项目 memory。
+4. 对每个部分标注适配性：适合迁移、不适合迁移、需要手动转换、已经兼容，并说明理由。
+5. 列出可迁移项、需要确认项、冲突项、只报告项、不支持项、未知字段和空值跳过项。
+6. 对高风险资源单独要求确认：permissions、hooks、MCP secrets/env/headers、插件/marketplace、所有冲突。
+7. 只执行用户批准的迁移项。
+8. 输出最终迁移报告。
+
+迁移计划不会只问“是否全部迁移”。它必须先让用户看到完整计划，并让用户能逐部分确认；未确认的部分不会执行。例如：
+
+- Part 1: Memory / instructions
+- Part 2: MCP servers
+- Part 3: Settings and permissions
+- Part 4: Hooks
+- Part 5: Skills
+- Part 6: Agents
+- Part 7: Commands and output styles
+- Part 8: Plugins and marketplaces
+- Part 9: Known-project memories, only when requested
 
 ## 能力边界
 
@@ -114,10 +128,12 @@ node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD" --include-known-
 
 运行后，你会得到一份迁移检查报告，通常包含：
 
+- 这次迁移一共分几部分或几步。
 - 发现了哪些 Claude Code 源配置。
 - 哪些内容已经在 Codex 兼容位置。
 - 哪些内容可以低风险复制。
 - 哪些内容需要确认或手动转换。
+- 哪些内容不适合迁移，以及为什么。
 - 哪些目标文件已经存在冲突。
 - 哪些字段未知、不支持或只适合报告。
 - 如果请求全项目 memory 扫描，会列出已知项目中的 `CLAUDE.md` / `CLAUDE.local.md` 迁移计划。
