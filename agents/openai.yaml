@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude Code to Codex Migration"
+  short_description: "Migrate Claude Code setups into Codex skills"
+  default_prompt: "Use $claude-code-to-codex-migration to migrate this Claude Code repository configuration into Codex."
