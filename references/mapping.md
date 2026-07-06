@@ -36,6 +36,7 @@ Common Claude Code sources:
 | `~/.claude/CLAUDE.md`, `<project>/CLAUDE.md` | Memory / instructions |
 | `<project>/CLAUDE.local.md` | Project local memory / instructions |
 | `~/.claude.json#projects[*]` | Known project paths used to discover each project's `CLAUDE.md` / `CLAUDE.local.md` when full-project memory scanning is requested |
+| `~/.claude/projects/<encoded-project>/memory/*.md` | Claude Code per-project memory files |
 | `~/.claude/keybindings.json` | Keybindings, not directly compatible |
 
 ## Scope Confirmation Rules
@@ -184,6 +185,7 @@ Rules:
 | `<project>/CLAUDE.local.md` | `<project>/AGENTS.local.md` | Copy only after confirming local convention. |
 | `~/.claude.json#projects[*]` discovered `CLAUDE.md` | `<known-project>/AGENTS.md` | Inspect only when full-project memory scanning is requested. |
 | `~/.claude.json#projects[*]` discovered `CLAUDE.local.md` | `<known-project>/AGENTS.local.md` | Inspect only when full-project memory scanning is requested; copy only after confirming local convention. |
+| `~/.claude/projects/<encoded-project>/memory/*.md` | `<project>/AGENTS.md` | Inspect current project by default; inspect all known projects only when full-project memory scanning is requested. Append after confirmation with a migration marker. |
 
 When the target exists, never overwrite. Offer skip, append, side-by-side copy, or manual merge.
 

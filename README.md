@@ -9,13 +9,14 @@
 当你想把下面这些 Claude Code 配置迁移到 Codex 时使用这个 skill：
 
 - 用户级和项目级 instructions / memory：`CLAUDE.md`、`CLAUDE.local.md`
+- Claude Code 项目 memory：`~/.claude/projects/<encoded-project>/memory/*.md`
 - Claude Code settings：`~/.claude/settings.json`、`<project>/.claude/settings.json`
 - MCP servers：`~/.claude.json`、`.mcp.json`、settings 中的 `mcpServers`
 - Slash commands：`.claude/commands/`
 - Skills：`.claude/skills/`
 - Agents：`.claude/agents/`
 - Hooks、permissions、output styles、plugins / marketplaces
-- `~/.claude.json#projects[*]` 中记录过的多个项目 memory
+- `~/.claude.json#projects[*]` 中记录过的多个项目 memory，包括对应的 `.claude/projects/.../memory/*.md`
 
 ## 安装
 
@@ -40,7 +41,7 @@ git clone git@gitlab.alibaba-inc.com:fliggy-fai/claude-code-to-codex-migration-s
 如果希望同时检查 Claude Code 记录过的所有项目里的 memory，可以明确说明：
 
 ```text
-使用 claude-code-to-codex-migration，检查所有已知 Claude Code 项目的 CLAUDE.md / CLAUDE.local.md，并规划迁移到 Codex。
+使用 claude-code-to-codex-migration，检查所有已知 Claude Code 项目的 CLAUDE.md / CLAUDE.local.md 和 .claude/projects project memory，并规划迁移到 Codex。
 ```
 
 skill 会优先运行只读 inspector：
@@ -55,7 +56,7 @@ node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD"
 node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD" --format json
 ```
 
-需要扫描 `~/.claude.json#projects[*]` 中所有已知项目 memory 时：
+需要扫描 `~/.claude.json#projects[*]` 中所有已知项目 memory 和对应的 `~/.claude/projects/<encoded-project>/memory/*.md` 时：
 
 ```bash
 node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD" --include-known-project-memories
@@ -106,7 +107,8 @@ node <skill-dir>/scripts/resolve-migration.mjs apply --plan plan.json --approval
 - 发现 Claude Code 配置来源和 Codex 目标位置。
 - 规划 `CLAUDE.md` 到 `AGENTS.md` 的迁移。
 - 规划用户级、项目级、项目本地级 memory 的迁移。
-- 可选扫描 `~/.claude.json` 中所有已知项目的 `CLAUDE.md` / `CLAUDE.local.md`。
+- 默认扫描当前项目的 `~/.claude/projects/<encoded-project>/memory/*.md`。
+- 可选扫描 `~/.claude.json` 中所有已知项目的 `CLAUDE.md` / `CLAUDE.local.md` 和 Claude project memory。
 - 对冲突文件和待确认项目生成 redacted diff。
 - 在用户授权后，对支持的低风险项自动合并，并在写入前备份目标文件。
 - 识别 MCP server 冲突和敏感字段。
@@ -134,6 +136,7 @@ node <skill-dir>/scripts/resolve-migration.mjs apply --plan plan.json --approval
 - `~/.claude/CLAUDE.md` -> `~/.codex/AGENTS.md`
 - `<project>/CLAUDE.md` -> `<project>/AGENTS.md`
 - `<project>/CLAUDE.local.md` -> `<project>/AGENTS.local.md`
+- `~/.claude/projects/<encoded-project>/memory/*.md` -> `<project>/AGENTS.md`
 - Claude MCP -> Codex `~/.codex/config.toml` 或项目 `.mcp.json`
 - Claude hooks -> Codex `~/.codex/hooks.json`
 - Claude skills -> Codex `~/.codex/skills/`，前提是格式兼容或已转换
@@ -176,7 +179,7 @@ approvals 文件示例：
 - 哪些内容不适合迁移，以及为什么。
 - 哪些目标文件已经存在冲突。
 - 哪些字段未知、不支持或只适合报告。
-- 如果请求全项目 memory 扫描，会列出已知项目中的 `CLAUDE.md` / `CLAUDE.local.md` 迁移计划。
+- 如果请求全项目 memory 扫描，会列出已知项目中的 `CLAUDE.md` / `CLAUDE.local.md` 和 `.claude/projects/.../memory/*.md` 迁移计划。
 
 这个报告的目标不是“一键盲迁”，而是让迁移过程可审计、可回滚、风险可见。
 

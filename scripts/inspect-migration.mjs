@@ -239,6 +239,18 @@ function claudeStatePath(home) {
   return path.join(home, '.claude.json');
 }
 
+function claudeProjectsHome(home) {
+  return path.join(claudeSettingsHome(home), 'projects');
+}
+
+function encodeClaudeProjectPath(projectPath) {
+  return normalizeProjectKeyForMatch(projectPath).replace(/\//g, '-');
+}
+
+function claudeProjectMemoryDir(home, projectPath) {
+  return path.join(claudeProjectsHome(home), encodeClaudeProjectPath(projectPath), 'memory');
+}
+
 function add(plan, section, item) {
   plan[section].push(item);
 }
@@ -661,6 +673,24 @@ function compareFile(plan, source, target, label, options = {}) {
   }
 }
 
+function compareProjectMemoryDir(plan, memoryDir, projectPath, labelPrefix) {
+  const files = listTopLevelItems(memoryDir).filter((item) =>
+    item.kind === 'file' && item.name.endsWith('.md'),
+  );
+  for (const item of files) {
+    compareFile(
+      plan,
+      item.path,
+      path.join(projectPath, 'AGENTS.md'),
+      `${labelPrefix}: ${item.name}`,
+      {
+        reason: '目标 AGENTS.md 已存在；需要确认是否追加 Claude 项目 memory',
+        choices: ['跳过', '追加', '另存并列文件', '手动合并'],
+      },
+    );
+  }
+}
+
 function analyzeClaudeState(plan, statePath, project, candidates, targetMcpIndex) {
   const result = readJson(statePath);
   if (!result.exists) return;
@@ -744,6 +774,12 @@ function analyzeKnownProjectMemories(plan, statePath, currentProject) {
       path.join(projectPath, 'CLAUDE.local.md'),
       path.join(projectPath, 'AGENTS.local.md'),
       `已知项目本地记忆文件: ${projectPath}`,
+    );
+    compareProjectMemoryDir(
+      plan,
+      claudeProjectMemoryDir(path.dirname(statePath), projectPath),
+      projectPath,
+      `已知项目 Claude project memory: ${projectPath}`,
     );
   }
 }
@@ -834,6 +870,12 @@ function inspect(opts) {
   compareFile(plan, path.join(cHome, 'CLAUDE.md'), path.join(qHome, 'AGENTS.md'), '用户级记忆文件');
   compareFile(plan, path.join(project, 'CLAUDE.md'), path.join(project, 'AGENTS.md'), '项目级记忆文件');
   compareFile(plan, path.join(project, 'CLAUDE.local.md'), path.join(project, 'AGENTS.local.md'), '项目本地记忆文件');
+  compareProjectMemoryDir(
+    plan,
+    claudeProjectMemoryDir(home, project),
+    project,
+    '当前项目 Claude project memory',
+  );
 
   compareDir(plan, path.join(cHome, 'skills'), path.join(qHome, 'skills'), '用户级 skills');
   compareDir(plan, path.join(cProject, 'skills'), path.join(qProject, 'skills'), '项目级 skills');

@@ -208,7 +208,12 @@ function classify(item) {
 function isMemoryFile(source, target) {
   const s = path.basename(source);
   const t = path.basename(target);
-  return (s === 'CLAUDE.md' || s === 'CLAUDE.local.md') &&
+  const sourcePath = source.split(path.sep).join('/');
+  const isClaudeInstruction = s === 'CLAUDE.md' || s === 'CLAUDE.local.md';
+  const isClaudeProjectMemory = sourcePath.includes('/.claude/projects/') &&
+    sourcePath.includes('/memory/') &&
+    s.endsWith('.md');
+  return (isClaudeInstruction || isClaudeProjectMemory) &&
     (t === 'AGENTS.md' || t === 'AGENTS.local.md');
 }
 

@@ -26,7 +26,7 @@ Use only for Claude Code -> Codex migration. The first priority is protecting th
 node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD"
 ```
 
-Use `--format json` when machine-readable output is useful. When the user asks to include memory from every known Claude Code project, add `--include-known-project-memories`; this scans `~/.claude.json` project paths for `CLAUDE.md` and `CLAUDE.local.md` and plans matching `AGENTS.md` targets without writing files. If Node.js is unavailable, do not skip inspection; manually inspect the source and target files listed in `references/mapping.md`, then produce the same migration-plan categories.
+Use `--format json` when machine-readable output is useful. The inspector always checks the current project's Claude project memory under `~/.claude/projects/<encoded-project>/memory/*.md` when present. When the user asks to include memory from every known Claude Code project, add `--include-known-project-memories`; this scans `~/.claude.json` project paths for `CLAUDE.md`, `CLAUDE.local.md`, and matching Claude project memory directories, then plans matching `AGENTS.md` targets without writing files. If Node.js is unavailable, do not skip inspection; manually inspect the source and target files listed in `references/mapping.md`, then produce the same migration-plan categories.
 
 2. Before interpreting the inspector output or editing files, read `references/mapping.md` and follow its scope rules, field mappings, and known gaps.
 
@@ -38,6 +38,7 @@ Use `--format json` when machine-readable output is useful. When the user asks t
 - Target files that would be touched.
 - User-level, project-shared, and project-local resources to migrate or skip.
 - Known-project memory files when `--include-known-project-memories` was requested.
+- Claude project memory files from `~/.claude/projects/<encoded-project>/memory/*.md`.
 - Suitability for each resource group: suitable to migrate, not suitable to migrate, or requires manual conversion.
 - Reasons for every skipped, report-only, unsupported, unknown, risky, or manual-conversion item.
 - Resources already in Codex-compatible locations.
