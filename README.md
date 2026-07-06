@@ -143,7 +143,7 @@ node <skill-dir>/scripts/resolve-migration.mjs apply --plan plan.json --approval
 `scripts/resolve-migration.mjs` 负责对比和授权后的合并：
 
 - `diff` 模式只读，输出 source / target / suitability / recommended action / risk / reason / diff。
-- `diff --format json` 输出对象中以 `entries` 作为规范数组字段，同时提供 `items` 兼容别名。
+- `diff --format json` 输出对象中只支持 `entries` 作为数组字段。
 - `apply` 模式需要 approvals 文件，只执行 `approved: true` 的条目。
 - 支持的动作是 `copy`、`append`、`side-by-side`、`structured-json-merge`、`skip`。
 - 修改已有目标前会创建备份，默认在 `.codex-migration-backups/`。

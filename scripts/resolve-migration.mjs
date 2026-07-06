@@ -410,7 +410,7 @@ try {
   const plan = readJson(opts.plan);
   if (opts.command === 'diff') {
     const entries = buildDiff(plan);
-    if (opts.format === 'json') console.log(JSON.stringify({ entries, items: entries }, null, 2));
+    if (opts.format === 'json') console.log(JSON.stringify({ entries }, null, 2));
     else process.stdout.write(renderMarkdown(entries));
   } else {
     const result = applyApproved(plan, opts.approvals, opts.backupDir);

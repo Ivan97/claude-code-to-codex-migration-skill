@@ -83,7 +83,7 @@ node <skill-dir>/scripts/resolve-migration.mjs diff --plan <plan.json>
 
 The comparison must include source, target, suitability, recommended action, risk, reason, and a redacted diff when possible. Secrets in `env`, `headers`, authorization values, tokens, passwords, and API keys must not be printed in full.
 
-When `--format json` is used, diff output is an object with `entries` as the canonical array. It also includes `items` as a compatibility alias for callers that expect that name.
+When `--format json` is used, diff output is an object with `entries` as the only supported array field for this skill version. Do not read `items` or other aliases.
 
 Automatic merge is allowed only after the user approves explicit items through an approvals file:
 
