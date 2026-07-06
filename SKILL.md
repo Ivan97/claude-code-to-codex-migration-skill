@@ -56,6 +56,7 @@ node <skill-dir>/scripts/resolve-migration.mjs diff --plan <plan.json>
 ```
 
 Use `--format json` when a structured diff is easier to process. The diff must be shown before applying any merge.
+JSON diff output uses `{ "entries": [...] }` and also includes `{ "items": [...] }` as a compatibility alias. Prefer `entries` in new automation.
 
 ## Migration Plan Format
 

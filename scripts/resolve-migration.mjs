@@ -58,7 +58,21 @@ function parseArgs(argv) {
 }
 
 function readJson(file) {
-  return JSON.parse(fs.readFileSync(expandHome(file), 'utf8'));
+  const resolved = expandHome(file);
+  let raw;
+  try {
+    raw = fs.readFileSync(resolved, 'utf8');
+  } catch (error) {
+    throw new Error(`Cannot read JSON file ${resolved}: ${error.message}`);
+  }
+  if (!raw.trim()) {
+    throw new Error(`JSON file is empty: ${resolved}`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`Invalid JSON in ${resolved}: ${error.message}`);
+  }
 }
 
 function expandHome(value) {
@@ -396,7 +410,7 @@ try {
   const plan = readJson(opts.plan);
   if (opts.command === 'diff') {
     const entries = buildDiff(plan);
-    if (opts.format === 'json') console.log(JSON.stringify({ entries }, null, 2));
+    if (opts.format === 'json') console.log(JSON.stringify({ entries, items: entries }, null, 2));
     else process.stdout.write(renderMarkdown(entries));
   } else {
     const result = applyApproved(plan, opts.approvals, opts.backupDir);
