@@ -44,14 +44,16 @@ function parseArgs(argv) {
     project: process.cwd(),
     home: os.homedir(),
     format: 'markdown',
+    includeKnownProjectMemories: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--project') opts.project = argv[++i];
     else if (arg === '--home') opts.home = argv[++i];
     else if (arg === '--format') opts.format = argv[++i];
+    else if (arg === '--include-known-project-memories') opts.includeKnownProjectMemories = true;
     else if (arg === '--help' || arg === '-h') {
-      console.log('用法: inspect-migration.mjs [--project PATH] [--home PATH] [--format markdown|json]');
+      console.log('用法: inspect-migration.mjs [--project PATH] [--home PATH] [--format markdown|json] [--include-known-project-memories]');
       process.exit(0);
     } else {
       throw new Error(`未知参数: ${arg}`);
@@ -711,6 +713,41 @@ function analyzeClaudeState(plan, statePath, project, candidates, targetMcpIndex
   }
 }
 
+function analyzeKnownProjectMemories(plan, statePath, currentProject) {
+  const result = readJson(statePath);
+  if (!result.exists || result.error) return;
+  const projects = result.parsed?.projects;
+  if (!projects || typeof projects !== 'object' || Array.isArray(projects)) return;
+
+  const current = normalizeProjectKeyForMatch(currentProject);
+  const seen = new Set();
+  for (const projectPath of Object.keys(projects).sort()) {
+    const normalized = normalizeProjectKeyForMatch(projectPath);
+    if (seen.has(normalized) || normalized === current) continue;
+    seen.add(normalized);
+    if (!isDir(projectPath)) {
+      add(plan, 'reportOnly', {
+        source: `${statePath}#projects[${projectPath}]`,
+        path: 'projects',
+        reason: '已知 Claude 项目路径不存在或当前不可访问；跳过项目 memory 检查',
+      });
+      continue;
+    }
+    compareFile(
+      plan,
+      path.join(projectPath, 'CLAUDE.md'),
+      path.join(projectPath, 'AGENTS.md'),
+      `已知项目记忆文件: ${projectPath}`,
+    );
+    compareFile(
+      plan,
+      path.join(projectPath, 'CLAUDE.local.md'),
+      path.join(projectPath, 'AGENTS.local.md'),
+      `已知项目本地记忆文件: ${projectPath}`,
+    );
+  }
+}
+
 function inspect(opts) {
   const home = opts.home;
   const project = opts.project;
@@ -762,6 +799,9 @@ function inspect(opts) {
   }
 
   analyzeClaudeState(plan, claudeStatePath(home), project, candidates, targetMcpIndex);
+  if (opts.includeKnownProjectMemories) {
+    analyzeKnownProjectMemories(plan, claudeStatePath(home), project);
+  }
 
   const legacyCodexJson = path.join(home, '.codex.json');
   if (exists(legacyCodexJson)) {

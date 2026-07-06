@@ -35,6 +35,7 @@ Common Claude Code sources:
 | `~/.claude/output-styles/`, `<project>/.claude/output-styles/` | Output styles |
 | `~/.claude/CLAUDE.md`, `<project>/CLAUDE.md` | Memory / instructions |
 | `<project>/CLAUDE.local.md` | Project local memory / instructions |
+| `~/.claude.json#projects[*]` | Known project paths used to discover each project's `CLAUDE.md` / `CLAUDE.local.md` when full-project memory scanning is requested |
 | `~/.claude/keybindings.json` | Keybindings, not directly compatible |
 
 ## Scope Confirmation Rules
@@ -44,6 +45,7 @@ Migration plans and confirmations must be separated by scope:
 - User-level: usually `~/.claude/**` or top-level `~/.claude.json`; target usually `~/.codex/**`.
 - Project-shared: usually `<project>/.claude/settings.json`, `<project>/.claude/**`, or `<project>/CLAUDE.md`; target usually `<project>/AGENTS.md`, `<project>/.mcp.json`, or a clearly marked project `.codex/` staging path.
 - Project-local: usually `<project>/.claude/settings.local.json`, `<project>/CLAUDE.local.md`, or `~/.claude.json#projects[project]`; target depends on local Codex support and must be confirmed.
+- All known projects: only scan when the user asks for every project's memory or the inspector is run with `--include-known-project-memories`.
 
 Confirmation must list resource type, source path, target path, and conflicts for each scope. Do not replace this with a vague "migrate all" confirmation.
 
@@ -109,6 +111,8 @@ Rules:
 | `~/.claude/CLAUDE.md` | `~/.codex/AGENTS.md` | Copy if target does not exist; ask if it exists. |
 | `<project>/CLAUDE.md` | `<project>/AGENTS.md` | Copy if target does not exist; ask if it exists. |
 | `<project>/CLAUDE.local.md` | `<project>/AGENTS.local.md` | Copy only after confirming local convention. |
+| `~/.claude.json#projects[*]` discovered `CLAUDE.md` | `<known-project>/AGENTS.md` | Inspect only when full-project memory scanning is requested. |
+| `~/.claude.json#projects[*]` discovered `CLAUDE.local.md` | `<known-project>/AGENTS.local.md` | Inspect only when full-project memory scanning is requested; copy only after confirming local convention. |
 
 When the target exists, never overwrite. Offer skip, append, side-by-side copy, or manual merge.
 
