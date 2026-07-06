@@ -49,6 +49,14 @@ Use `--format json` when machine-readable output is useful. When the user asks t
 
 4. Ask for confirmation. Low-risk copy-only items can be grouped by scope. High-risk resources require separate confirmation. Do not ask only "migrate everything"; show the source, target, scope, and resource type.
 
+5. For conflicts or any item needing confirmation, generate a comparison before asking the user to approve writes:
+
+```bash
+node <skill-dir>/scripts/resolve-migration.mjs diff --plan <plan.json>
+```
+
+Use `--format json` when a structured diff is easier to process. The diff must be shown before applying any merge.
+
 ## Migration Plan Format
 
 Use this structure when presenting the plan:
@@ -77,16 +85,22 @@ This migration is divided into <N> parts.
 - Confirm each approved part by number. Do not proceed on unconfirmed parts.
 ```
 
-5. Execute only approved items:
+6. Execute only approved items. If the user authorizes automatic merge, create an approval file and run:
+
+```bash
+node <skill-dir>/scripts/resolve-migration.mjs apply --plan <plan.json> --approvals <approvals.json>
+```
 
 - Copy files/directories; never move.
 - Do not overwrite existing targets. On conflicts, ask whether to skip, append, rename the copy, or manually merge.
+- Use automatic merge only for supported actions: `copy`, `append`, `side-by-side`, and `structured-json-merge`.
+- Create backups before changing existing targets. The resolver writes backups under `.codex-migration-backups/` by default.
 - Project MCP in `<project>/.mcp.json` is already in a common compatible location; validate and report it rather than copying it.
 - Codex MCP configuration commonly lives in `~/.codex/config.toml` under `[mcp_servers.<name>]`; do not blindly paste Claude JSON into TOML.
 - Codex hooks commonly live in `~/.codex/hooks.json`; migrate only after explicit risk confirmation.
 - Plugins and marketplaces are report-only unless the current Codex environment exposes a verified install flow.
 
-6. Output a final report containing:
+7. Output a final report containing:
 
 - Migrated items.
 - Skipped items and reasons.
@@ -102,3 +116,4 @@ This migration is divided into <N> parts.
 
 - `references/mapping.md`: The migration contract. Read before explaining a plan or modifying files.
 - `scripts/inspect-migration.mjs`: Deterministic read-only scanner. It must not write files, install plugins, or access the network.
+- `scripts/resolve-migration.mjs`: Diff and approved-merge helper. It can write files only in `apply` mode with an explicit approvals file.

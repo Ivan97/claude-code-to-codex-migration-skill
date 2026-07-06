@@ -73,6 +73,51 @@ Recommended high-level parts:
 8. Plugins and marketplaces.
 9. Known-project memories, only when requested.
 
+## Conflict Comparison and Approved Merge
+
+Conflicts and confirmation-required items must go through a compare step before writing:
+
+```bash
+node <skill-dir>/scripts/resolve-migration.mjs diff --plan <plan.json>
+```
+
+The comparison must include source, target, suitability, recommended action, risk, reason, and a redacted diff when possible. Secrets in `env`, `headers`, authorization values, tokens, passwords, and API keys must not be printed in full.
+
+Automatic merge is allowed only after the user approves explicit items through an approvals file:
+
+```json
+{
+  "approvals": [
+    {
+      "source": "/path/to/CLAUDE.md",
+      "target": "/path/to/AGENTS.md",
+      "action": "append",
+      "approved": true
+    }
+  ]
+}
+```
+
+Supported apply actions:
+
+| Action | Use for | Notes |
+|---|---|---|
+| `copy` | Target does not exist | Fails if target already exists. |
+| `append` | `CLAUDE.md` / `CLAUDE.local.md` into `AGENTS.md` / `AGENTS.local.md` | Adds a `migrated-from-claude-code` marker. |
+| `side-by-side` | Existing target with uncertain schema | Writes a `.claude-migrated` sibling file. |
+| `structured-json-merge` | JSON object files only | Adds non-conflicting keys; fails on conflicting values. |
+| `skip` | Approved no-op | Records the skip in apply output. |
+
+Do not automatically merge:
+
+- `~/.codex/config.toml`; generate a patch or manual instructions instead.
+- `~/.codex/hooks.json` unless each hook is explicitly approved and reviewed.
+- Claude agents into Codex agents without schema conversion.
+- Claude slash commands into Codex commands; convert them into skills or instructions.
+- Plugins, marketplaces, auth, session, cache, keybindings, unknown state, or model/provider settings.
+
+Before changing an existing target, the resolver must create a backup under `.codex-migration-backups/` unless the caller provides a backup directory.
+
 ## MCP
 
 Recommended handling:

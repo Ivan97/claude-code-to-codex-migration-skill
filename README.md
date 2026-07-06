@@ -61,6 +61,18 @@ node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD" --format json
 node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD" --include-known-project-memories
 ```
 
+当迁移计划里有冲突或待确认项时，可以生成对比：
+
+```bash
+node <skill-dir>/scripts/resolve-migration.mjs diff --plan plan.json
+```
+
+用户确认后，可以用 approvals 文件执行支持的自动合并：
+
+```bash
+node <skill-dir>/scripts/resolve-migration.mjs apply --plan plan.json --approvals approvals.json
+```
+
 ## 行为
 
 这个 skill 会按下面的顺序工作：
@@ -71,8 +83,9 @@ node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD" --include-known-
 4. 对每个部分标注适配性：适合迁移、不适合迁移、需要手动转换、已经兼容，并说明理由。
 5. 列出可迁移项、需要确认项、冲突项、只报告项、不支持项、未知字段和空值跳过项。
 6. 对高风险资源单独要求确认：permissions、hooks、MCP secrets/env/headers、插件/marketplace、所有冲突。
-7. 只执行用户批准的迁移项。
-8. 输出最终迁移报告。
+7. 对冲突和待确认项生成 diff，让用户先看差异。
+8. 只执行用户批准的迁移项；如果用户授权自动合并，使用 approvals 文件执行。
+9. 输出最终迁移报告。
 
 迁移计划不会只问“是否全部迁移”。它必须先让用户看到完整计划，并让用户能逐部分确认；未确认的部分不会执行。例如：
 
@@ -94,6 +107,8 @@ node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD" --include-known-
 - 规划 `CLAUDE.md` 到 `AGENTS.md` 的迁移。
 - 规划用户级、项目级、项目本地级 memory 的迁移。
 - 可选扫描 `~/.claude.json` 中所有已知项目的 `CLAUDE.md` / `CLAUDE.local.md`。
+- 对冲突文件和待确认项目生成 redacted diff。
+- 在用户授权后，对支持的低风险项自动合并，并在写入前备份目标文件。
 - 识别 MCP server 冲突和敏感字段。
 - 识别 hooks、permissions、plugins 等高风险资源。
 - 对已存在目标文件给出跳过、追加、并列副本、手动合并等选择。
@@ -106,6 +121,7 @@ node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD" --include-known-
 - 不把 Claude JSON settings 直接粘贴进 Codex TOML。
 - 不把 Claude slash commands 假装成 Codex 原生 slash commands。
 - 不把 Claude agents 假装成 Codex agent schema；需要转换或确认。
+- 不自动合并 `~/.codex/config.toml`、hooks、agents、commands、plugins、auth/session/cache/keybindings 等高风险或非等价内容。
 - 不自动安装 plugins 或 marketplaces。
 - 不假定 Claude 模型名、provider、auth 环境变量在 Codex 中可用。
 
@@ -123,6 +139,29 @@ node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD" --include-known-
 - Claude skills -> Codex `~/.codex/skills/`，前提是格式兼容或已转换
 
 扫描器不会写文件、不会安装插件、不会访问网络。它只输出计划，让 Codex 和用户基于计划继续决策。
+
+`scripts/resolve-migration.mjs` 负责对比和授权后的合并：
+
+- `diff` 模式只读，输出 source / target / suitability / recommended action / risk / reason / diff。
+- `apply` 模式需要 approvals 文件，只执行 `approved: true` 的条目。
+- 支持的动作是 `copy`、`append`、`side-by-side`、`structured-json-merge`、`skip`。
+- 修改已有目标前会创建备份，默认在 `.codex-migration-backups/`。
+- diff 输出会尽量隐藏 token、authorization、password、secret、API key 等敏感值。
+
+approvals 文件示例：
+
+```json
+{
+  "approvals": [
+    {
+      "source": "/path/to/CLAUDE.md",
+      "target": "/path/to/AGENTS.md",
+      "action": "append",
+      "approved": true
+    }
+  ]
+}
+```
 
 ## 预期效果
 
@@ -158,4 +197,11 @@ node scripts/inspect-migration.mjs --project /path/to/project
 
 ```bash
 node scripts/inspect-migration.mjs --project /path/to/project --include-known-project-memories
+```
+
+如需验证 diff 能力：
+
+```bash
+node scripts/inspect-migration.mjs --project /path/to/project --format json > plan.json
+node scripts/resolve-migration.mjs diff --plan plan.json
 ```
