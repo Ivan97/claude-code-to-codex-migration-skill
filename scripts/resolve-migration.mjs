@@ -104,7 +104,7 @@ function mkdirp(dir) {
 
 function planItems(plan) {
   const items = [];
-  for (const section of ['conflicts', 'needsDecision', 'migratable']) {
+  for (const section of ['conflicts', 'updates', 'needsDecision', 'migratable']) {
     for (const item of plan[section] || []) {
       if (!item.source || !item.target) continue;
       items.push({ ...item, section });
@@ -135,9 +135,10 @@ function classify(item) {
       target,
       label,
       diffKind: 'missing-source',
+      changeType: 'delete',
       suitable: 'not suitable',
       recommendedAction: 'skip',
-      reason: 'Source does not exist or is not accessible.',
+      reason: 'Source does not exist or is not accessible. Treat as delete/missing-source, not a migratable item.',
     };
   }
 
@@ -148,9 +149,10 @@ function classify(item) {
       target,
       label,
       diffKind: sourceFile ? 'new-file' : 'new-directory',
+      changeType: 'add',
       suitable: 'suitable',
       recommendedAction: 'copy',
-      reason: 'Target does not exist and the inspector classified this item as migratable.',
+      reason: 'Target does not exist. This is an addition, not a conflict.',
     };
   }
 
@@ -161,9 +163,10 @@ function classify(item) {
       target,
       label,
       diffKind: 'text-file',
+      changeType: 'update',
       suitable: 'suitable',
       recommendedAction: 'append',
-      reason: 'Instruction memory files can be appended with a migration marker after user confirmation.',
+      reason: 'Instruction memory files update an existing target by appending with a migration marker after user confirmation.',
     };
   }
 
@@ -174,9 +177,10 @@ function classify(item) {
       target,
       label,
       diffKind: 'json-file',
+      changeType: 'update',
       suitable: 'requires manual conversion',
       recommendedAction: 'structured-json-merge',
-      reason: 'Both files are JSON; a structured merge can preserve target keys and add non-conflicting source keys.',
+      reason: 'Both files are JSON. Treat as an update unless a structured merge proves same keys have different values.',
     };
   }
 
@@ -187,9 +191,12 @@ function classify(item) {
       target,
       label,
       diffKind: 'text-file',
+      changeType: item.section === 'conflicts' ? 'conflict' : 'update',
       suitable: 'requires manual conversion',
       recommendedAction: 'side-by-side',
-      reason: 'Both files exist. A side-by-side copy is safer unless the user approves a specific merge.',
+      reason: item.section === 'conflicts'
+        ? 'The inspector marked this as an explicit conflict.'
+        : 'Both files exist. Treat as an update unless semantic disagreement is identified.',
     };
   }
 
@@ -199,9 +206,12 @@ function classify(item) {
     target,
     label,
     diffKind: 'path',
+    changeType: item.section === 'conflicts' ? 'conflict' : 'update',
     suitable: 'requires manual conversion',
     recommendedAction: 'side-by-side',
-    reason: 'Path types or schemas are not safely mergeable without user review.',
+    reason: item.section === 'conflicts'
+      ? 'The inspector marked this as an explicit conflict.'
+      : 'Path types or schemas are not safely mergeable without user review. Treat as an update when conflict is not proven.',
   };
 }
 
@@ -248,6 +258,7 @@ function buildDiff(plan) {
       section: classified.section,
       source: classified.source,
       target: classified.target,
+      changeType: classified.changeType,
       suitability: classified.suitable,
       recommendedAction: classified.recommendedAction,
       reason: classified.reason,
@@ -262,7 +273,7 @@ function riskFor(item) {
   if (text.includes('hook') || text.includes('permission') || text.includes('headers') || text.includes('env')) {
     return 'high';
   }
-  if (item.section === 'conflicts' || item.section === 'needsDecision') return 'medium';
+  if (item.section === 'conflicts' || item.section === 'updates' || item.section === 'needsDecision') return 'medium';
   return 'low';
 }
 
@@ -274,6 +285,7 @@ function renderMarkdown(entries) {
     lines.push(`## Item ${index + 1}: ${entry.label}`);
     lines.push(`- Source: \`${entry.source}\``);
     lines.push(`- Target: \`${entry.target}\``);
+    lines.push(`- Change type: ${entry.changeType}`);
     lines.push(`- Suitability: ${entry.suitability}`);
     lines.push(`- Recommended action: ${entry.recommendedAction}`);
     lines.push(`- Risk: ${entry.risk}`);

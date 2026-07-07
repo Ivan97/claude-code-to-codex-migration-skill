@@ -11,8 +11,8 @@ Use only for Claude Code -> Codex migration. The first priority is protecting th
 
 - Start with a read-only inspection. Do not write files or run install commands before presenting a migration plan.
 - Default to the current working directory as the project context. If `~/.claude.json` has multiple matching project entries, ask the user to choose.
-- Require confirmation before any write. Confirm high-risk resources separately: permissions, hooks, MCP secrets/env/headers, plugin or marketplace changes, and all conflicts.
-- Explain the plan by scope: user-level, project-shared, and project-local. List what migrates, what is skipped, where it goes, and any conflicts.
+- Require confirmation before any write. Confirm high-risk resources separately: permissions, hooks, MCP secrets/env/headers, plugin or marketplace changes, all updates to existing targets, and all explicit conflicts.
+- Explain the plan by scope: user-level, project-shared, and project-local. List what migrates, what is skipped, where it goes, and any additions, updates, deletions, or explicit conflicts.
 - The migration plan must explicitly say how many parts or steps it contains. For each part, state whether it is suitable to migrate, not suitable to migrate, or requires manual conversion, and include the reason.
 - Never migrate auth state, OAuth/session files, managed settings, remote settings, trust caches, approval state, runtime caches, or unknown state/cache files.
 - Only write targets listed in `references/mapping.md`. Report unknown, unsupported, invalid, and empty fields unless the mapping gives an explicit migration rule.
@@ -43,14 +43,14 @@ Use `--format json` when machine-readable output is useful. The inspector always
 - Reasons for every skipped, report-only, unsupported, unknown, risky, or manual-conversion item.
 - Resources already in Codex-compatible locations.
 - Recommended project and target paths.
-- Conflicts and choices.
+- Additions, updates, deletions, explicit conflicts, and choices.
 - Report-only, unsupported, unknown, and empty fields.
 - Plugin or marketplace candidates without executing installation.
 - Hook event names, matchers, commands/prompts, target file, and allowed variable replacements.
 
 4. Ask for confirmation. Low-risk copy-only items can be grouped by scope. High-risk resources require separate confirmation. Do not ask only "migrate everything"; show the source, target, scope, and resource type.
 
-5. For conflicts or any item needing confirmation, generate a comparison before asking the user to approve writes:
+5. For updates, explicit conflicts, or any item needing confirmation, generate a comparison before asking the user to approve writes:
 
 ```bash
 node <skill-dir>/scripts/resolve-migration.mjs diff --plan <plan.json>
@@ -58,6 +58,7 @@ node <skill-dir>/scripts/resolve-migration.mjs diff --plan <plan.json>
 
 Use `--format json` when a structured diff is easier to process. The diff must be shown before applying any merge.
 JSON diff output uses `{ "entries": [...] }`. Treat `entries` as the only supported resolver diff array for this skill version.
+Each diff entry includes `changeType`: `add`, `update`, `delete`, or `conflict`. `add` means the target does not exist and is not a conflict. `update` means the target exists or existing information may change, but no explicit contradiction has been proven. `delete` means the source is missing or inaccessible. `conflict` is reserved for cases where the new information and existing metadata or content are explicitly inconsistent, opposed, or different. If the skill cannot clearly prove a conflict, describe the item as an update.
 
 ## Migration Plan Format
 
@@ -74,6 +75,7 @@ This migration is divided into <N> parts.
 - Target: `<path or target description>`
 - Suitability: <suitable | not suitable | requires manual conversion | already compatible>
 - Reason: <why this classification is correct>
+- Change type: <add | update | delete | conflict>
 - Proposed action: <copy | convert | report only | skip | ask user to choose>
 - Risk/confirmation: <none | requires confirmation | high-risk separate confirmation>
 
@@ -94,7 +96,7 @@ node <skill-dir>/scripts/resolve-migration.mjs apply --plan <plan.json> --approv
 ```
 
 - Copy files/directories; never move.
-- Do not overwrite existing targets. On conflicts, ask whether to skip, append, rename the copy, or manually merge.
+- Do not overwrite existing targets. Existing targets are updates by default; ask whether to skip, append, rename the copy, or manually merge. Use "conflict" only when the difference is explicitly inconsistent or opposed.
 - Use automatic merge only for supported actions: `copy`, `append`, `side-by-side`, and `structured-json-merge`.
 - Create backups before changing existing targets. The resolver writes backups under `.codex-migration-backups/` by default.
 - Project MCP in `<project>/.mcp.json` is already in a common compatible location; validate and report it rather than copying it.
@@ -106,7 +108,7 @@ node <skill-dir>/scripts/resolve-migration.mjs apply --plan <plan.json> --approv
 
 - Migrated items.
 - Skipped items and reasons.
-- Conflicts and user choices.
+- Additions, updates, deletions, explicit conflicts, and user choices.
 - Unsupported or unknown fields.
 - Report-only items.
 - Plugin or marketplace candidates.

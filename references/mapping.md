@@ -48,7 +48,20 @@ Migration plans and confirmations must be separated by scope:
 - Project-local: usually `<project>/.claude/settings.local.json`, `<project>/CLAUDE.local.md`, or `~/.claude.json#projects[project]`; target depends on local Codex support and must be confirmed.
 - All known projects: only scan when the user asks for every project's memory or the inspector is run with `--include-known-project-memories`.
 
-Confirmation must list resource type, source path, target path, and conflicts for each scope. Do not replace this with a vague "migrate all" confirmation.
+Confirmation must list resource type, source path, target path, change type, and any explicit conflicts for each scope. Do not replace this with a vague "migrate all" confirmation.
+
+## Change Type Definitions
+
+Use these labels consistently in plans, diffs, and final reports:
+
+| Change type | Definition |
+|---|---|
+| `add` | The target does not exist and the migration would create a new file, directory, server, field, or entry. Additions are not conflicts. |
+| `update` | The target or related information already exists and the migration may append, merge, replace, rename, or otherwise change it. If a conflict cannot be clearly proven, classify the item as an update. |
+| `delete` | The source is missing or inaccessible, or an approved no-op intentionally leaves something unmigrated. The skill must not delete Claude Code source files automatically. |
+| `conflict` | New information and existing information or metadata are explicitly inconsistent, opposed, or different in a way that cannot be merged without choosing one meaning or value. |
+
+Do not classify a target merely existing as a conflict. Same path, same MCP server name, or same file name is an update candidate unless content or metadata comparison proves an actual inconsistency. Unknown or uncertain differences are updates, not conflicts.
 
 ## Migration Plan Requirements
 
@@ -56,7 +69,7 @@ Every migration plan must be numbered and explicit:
 
 - State the total number of parts or steps.
 - Give each part a name and scope.
-- List source path, target path, proposed action, and required confirmation.
+- List source path, target path, change type, proposed action, and required confirmation.
 - Classify each part as `suitable`, `not suitable`, `requires manual conversion`, or `already compatible`.
 - Explain the reason for that classification.
 - Put all report-only, unsupported, unknown, empty, risky, or skipped items in a separate section with reasons.
@@ -76,13 +89,13 @@ Recommended high-level parts:
 
 ## Conflict Comparison and Approved Merge
 
-Conflicts and confirmation-required items must go through a compare step before writing:
+Updates, explicit conflicts, and confirmation-required items must go through a compare step before writing:
 
 ```bash
 node <skill-dir>/scripts/resolve-migration.mjs diff --plan <plan.json>
 ```
 
-The comparison must include source, target, suitability, recommended action, risk, reason, and a redacted diff when possible. Secrets in `env`, `headers`, authorization values, tokens, passwords, and API keys must not be printed in full.
+The comparison must include source, target, change type, suitability, recommended action, risk, reason, and a redacted diff when possible. Secrets in `env`, `headers`, authorization values, tokens, passwords, and API keys must not be printed in full.
 
 When `--format json` is used, diff output is an object with `entries` as the only supported array field for this skill version. Do not read `items` or other aliases.
 
@@ -141,7 +154,7 @@ Rules:
 
 - Preserve supported fields unless a Codex TOML conversion requires syntax changes.
 - Treat `env`, `headers`, and `headersHelper` as sensitive. Show key names and target location, not full secret values, unless the user asks.
-- If the target already has a same-name server, stop and ask: keep target, replace target, rename source server, or skip.
+- If the target already has a same-name server, classify it as an update unless a value comparison proves an explicit conflict; stop and ask: keep target, replace target, rename source server, or skip.
 - Report unsupported fields with source path and server name.
 - Do not migrate OAuth tokens, approval state, or connection state.
 

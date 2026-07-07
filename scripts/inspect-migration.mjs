@@ -270,7 +270,7 @@ function addTargetMcpFile(plan, index, label, pathname) {
     add(plan, 'unsupported', {
       source: pathname,
       path: 'mcpServers',
-      reason: `目标 MCP 冲突检查已跳过: ${result.error}`,
+      reason: `目标 MCP 更新/冲突检查已跳过: ${result.error}`,
     });
     return;
   }
@@ -288,7 +288,7 @@ function addTargetCodexMcpToml(plan, index, label, pathname) {
     add(plan, 'unsupported', {
       source: pathname,
       path: 'mcp_servers',
-      reason: `目标 Codex MCP 冲突检查已跳过: ${result.error}`,
+      reason: `目标 Codex MCP 更新/冲突检查已跳过: ${result.error}`,
     });
     return;
   }
@@ -460,18 +460,21 @@ function analyzeMcpServers(plan, sourcePath, sourceScope, target, servers, optio
     );
     if (options.compatibleInPlace) add(plan, 'compatibleInPlace', item);
     else if (existingTargets.length) {
-      const conflictItem = {
+      const updateItem = {
         ...item,
         existingTargets,
-        reason: '目标中已存在同名 MCP server',
+        changeType: 'update',
+        reason: '目标中已存在同名 MCP server；需要确认是保留、替换、重命名还是跳过。仅凭同名不能判定为冲突',
       };
-      add(plan, 'needsDecision', conflictItem);
-      add(plan, 'conflicts', {
+      add(plan, 'needsDecision', updateItem);
+      add(plan, 'updates', {
         source: sourcePath,
         target,
         label: `MCP server ${name}`,
         server: name,
         existingTargets,
+        changeType: 'update',
+        reason: updateItem.reason,
         choices: ['保留目标', '替换目标', '重命名源 server', '跳过'],
       });
     } else add(plan, sensitive.length ? 'needsDecision' : 'migratable', item);
@@ -582,14 +585,14 @@ function compareDir(plan, source, target, label) {
   if (items.length === 0) return;
   for (const item of items) {
     const targetPath = path.join(target, item.name);
-    const conflictedFiles = [];
+    const updateFiles = [];
     if (exists(targetPath)) {
-      conflictedFiles.push(targetPath);
+      updateFiles.push(targetPath);
     } else {
       for (const file of item.files) {
         const rel = path.relative(source, file);
         const candidate = path.join(target, rel);
-        if (exists(candidate)) conflictedFiles.push(candidate);
+        if (exists(candidate)) updateFiles.push(candidate);
       }
     }
     const planItem = {
@@ -599,20 +602,23 @@ function compareDir(plan, source, target, label) {
       item: item.name,
       itemKind: item.kind,
       files: item.files.length,
-      conflicts: conflictedFiles.length,
-      conflictedFiles,
-      reason: conflictedFiles.length ? '目标已存在或存在同路径文件冲突' : undefined,
+      updates: updateFiles.length,
+      updateFiles,
+      changeType: updateFiles.length ? 'update' : 'add',
+      reason: updateFiles.length ? '目标已存在或存在同路径文件；需要确认更新/并列副本/手动合并，不能仅凭路径存在判定为冲突' : undefined,
       rule: '只复制；保留相对路径；绝不覆盖',
     };
-    add(plan, conflictedFiles.length ? 'needsDecision' : 'migratable', planItem);
-    if (conflictedFiles.length) {
-      add(plan, 'conflicts', {
+    add(plan, updateFiles.length ? 'needsDecision' : 'migratable', planItem);
+    if (updateFiles.length) {
+      add(plan, 'updates', {
         source: item.path,
         target: targetPath,
         label: `${label}: ${item.name}`,
         item: item.name,
-        count: conflictedFiles.length,
-        conflictedFiles,
+        count: updateFiles.length,
+        updateFiles,
+        changeType: 'update',
+        reason: planItem.reason,
         choices: ['跳过', '重命名源副本', '手动合并'],
       });
     }
@@ -655,19 +661,22 @@ function decisionDirItems(plan, source, target, label, reason) {
 function compareFile(plan, source, target, label, options = {}) {
   if (!exists(source)) return;
   if (exists(target)) {
+    const reason = options.reason || '目标已存在；这是更新候选，除非能明确识别语义不一致，否则不标记为冲突';
     add(plan, 'needsDecision', {
       source,
       target,
       label,
-      reason: options.reason || '目标已存在',
+      changeType: 'update',
+      reason,
       choices: options.choices || ['跳过', '追加', '另存并列文件', '手动合并'],
     });
-    add(plan, 'conflicts', { source, target, label, reason: '目标已存在' });
+    add(plan, 'updates', { source, target, label, changeType: 'update', reason });
   } else {
     add(plan, 'migratable', {
       source,
       target,
       label,
+      changeType: 'add',
       rule: '只复制',
     });
   }
@@ -799,6 +808,7 @@ function inspect(opts) {
     sourcesFound: [],
     compatibleInPlace: [],
     migratable: [],
+    updates: [],
     needsDecision: [],
     conflicts: [],
     reportOnly: [],
@@ -919,10 +929,12 @@ function renderMarkdown(plan) {
   lines.push(renderList(plan.compatibleInPlace, (x) => x.server ? `MCP server \`${x.server}\` 已位于 Codex 可读取的项目 MCP 位置: \`${x.source}\`` : JSON.stringify(x)));
   lines.push('## 可迁移');
   lines.push(renderList(plan.migratable, (x) => x.server ? `MCP server \`${x.server}\`: \`${x.source}\` -> \`${x.target}\`` : `${x.label || x.path || '条目'}: \`${x.source}\` -> \`${x.target}\`${x.files ? ` (${x.files} 个文件)` : ''}`));
+  lines.push('## 更新');
+  lines.push(renderList(plan.updates, (x) => `${x.label || x.path || x.server || '条目'}: \`${x.source}\`${x.target ? ` -> \`${x.target}\`` : ''}${x.count ? ` (${x.count} 个待更新路径)` : ''}${x.reason ? ` (${x.reason})` : ''}${x.existingTargets ? `；已存在: ${x.existingTargets.map((p) => `\`${p}\``).join(', ')}` : ''}`));
   lines.push('## 需要确认');
   lines.push(renderList(plan.needsDecision, (x) => `${x.label || x.path || x.server || '条目'} 来自 \`${x.source}\`${x.target ? ` -> \`${x.target}\`` : ''}${x.reason ? ` (${x.reason})` : ''}${x.existingTargets ? `；已存在: ${x.existingTargets.map((p) => `\`${p}\``).join(', ')}` : ''}`));
   lines.push('## 冲突');
-  lines.push(renderList(plan.conflicts, (x) => `${x.label || '条目'}: \`${x.source}\` -> \`${x.target}\`${x.count ? ` (${x.count} 个冲突)` : ''}${x.existingTargets ? `；已存在: ${x.existingTargets.map((p) => `\`${p}\``).join(', ')}` : ''}`));
+  lines.push(renderList(plan.conflicts, (x) => `${x.label || '条目'}: \`${x.source}\` -> \`${x.target}\`${x.count ? ` (${x.count} 个明确冲突)` : ''}${x.reason ? ` (${x.reason})` : ''}${x.existingTargets ? `；已存在: ${x.existingTargets.map((p) => `\`${p}\``).join(', ')}` : ''}`));
   lines.push('## 插件计划');
   lines.push(renderList(plan.pluginPlan, (x) => {
     let text = `\`${x.path}\` 位于 \`${x.source}\`: ${x.recommendation}`;
@@ -944,7 +956,7 @@ function renderMarkdown(plan) {
   lines.push(renderList(plan.emptySkipped, (x) => `\`${x.source}\` ${x.path}`));
   lines.push('## 确认要求');
   lines.push('- 按用户级、项目共享级、项目本地级分别列出要迁移和不迁移的内容，并让用户确认对应源路径、目标路径和资源类型。');
-  lines.push('- permissions、hooks、MCP secrets/env/headers、插件 marketplace/install 命令以及所有冲突必须单独确认。');
+  lines.push('- permissions、hooks、MCP secrets/env/headers、插件 marketplace/install 命令、所有更新候选和所有明确冲突必须单独确认。');
   lines.push('');
   lines.push('## 模型配置提醒');
   lines.push('- 如果 skills、agents、hooks、commands、plugins 或 output styles 中有 Claude 模型名、provider、auth 或模型相关环境变量，需要转换成 Codex 支持的模型配置，不能假定两边相同。');

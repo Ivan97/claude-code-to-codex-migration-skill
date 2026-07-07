@@ -62,7 +62,7 @@ node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD" --format json
 node <skill-dir>/scripts/inspect-migration.mjs --project "$PWD" --include-known-project-memories
 ```
 
-当迁移计划里有冲突或待确认项时，可以生成对比：
+当迁移计划里有更新、明确冲突或待确认项时，可以生成对比：
 
 ```bash
 node <skill-dir>/scripts/resolve-migration.mjs diff --plan plan.json
@@ -82,9 +82,9 @@ node <skill-dir>/scripts/resolve-migration.mjs apply --plan plan.json --approval
 2. 生成迁移计划，并明确说明一共分为几部分或几步。
 3. 按 scope 拆分迁移计划：用户级、项目共享级、项目本地级、已知项目 memory。
 4. 对每个部分标注适配性：适合迁移、不适合迁移、需要手动转换、已经兼容，并说明理由。
-5. 列出可迁移项、需要确认项、冲突项、只报告项、不支持项、未知字段和空值跳过项。
-6. 对高风险资源单独要求确认：permissions、hooks、MCP secrets/env/headers、插件/marketplace、所有冲突。
-7. 对冲突和待确认项生成 diff，让用户先看差异。
+5. 列出可迁移项、更新项、需要确认项、明确冲突项、只报告项、不支持项、未知字段和空值跳过项。
+6. 对高风险资源单独要求确认：permissions、hooks、MCP secrets/env/headers、插件/marketplace、所有更新候选和所有明确冲突。
+7. 对更新、明确冲突和待确认项生成 diff，让用户先看差异。
 8. 只执行用户批准的迁移项；如果用户授权自动合并，使用 approvals 文件执行。
 9. 输出最终迁移报告。
 
@@ -100,6 +100,15 @@ node <skill-dir>/scripts/resolve-migration.mjs apply --plan plan.json --approval
 - Part 8: Plugins and marketplaces
 - Part 9: Known-project memories, only when requested
 
+## 变化类型定义
+
+- 新增：目标不存在，迁移会创建新文件、目录、server、字段或条目。新增不是冲突。
+- 更新：目标或相关信息已存在，迁移可能追加、合并、替换、重命名或改变它。如果无法明确识别冲突，统一描述为更新。
+- 删除：源不存在、不可访问，或用户批准跳过后保持不迁移。skill 不会自动删除 Claude Code 源文件。
+- 冲突：新信息与已有信息或元信息明确不一致、对立，或者同一语义位置存在不同取值，必须选择其一才能继续。
+
+仅仅“目标文件已存在”“同名 MCP server 已存在”“同路径文件已存在”不等于冲突；这些默认是更新候选，需要对比和用户确认。
+
 ## 能力边界
 
 这个 skill 能做：
@@ -109,9 +118,9 @@ node <skill-dir>/scripts/resolve-migration.mjs apply --plan plan.json --approval
 - 规划用户级、项目级、项目本地级 memory 的迁移。
 - 默认扫描当前项目的 `~/.claude/projects/<encoded-project>/memory/*.md`。
 - 可选扫描 `~/.claude.json` 中所有已知项目的 `CLAUDE.md` / `CLAUDE.local.md` 和 Claude project memory。
-- 对冲突文件和待确认项目生成 redacted diff。
+- 对更新、明确冲突和待确认项目生成 redacted diff。
 - 在用户授权后，对支持的低风险项自动合并，并在写入前备份目标文件。
-- 识别 MCP server 冲突和敏感字段。
+- 识别 MCP server 更新候选、明确冲突和敏感字段。
 - 识别 hooks、permissions、plugins 等高风险资源。
 - 对已存在目标文件给出跳过、追加、并列副本、手动合并等选择。
 
@@ -145,7 +154,7 @@ node <skill-dir>/scripts/resolve-migration.mjs apply --plan plan.json --approval
 
 `scripts/resolve-migration.mjs` 负责对比和授权后的合并：
 
-- `diff` 模式只读，输出 source / target / suitability / recommended action / risk / reason / diff。
+- `diff` 模式只读，输出 source / target / change type / suitability / recommended action / risk / reason / diff。
 - `diff --format json` 输出对象中只支持 `entries` 作为数组字段。
 - `apply` 模式需要 approvals 文件，只执行 `approved: true` 的条目。
 - 支持的动作是 `copy`、`append`、`side-by-side`、`structured-json-merge`、`skip`。
@@ -177,7 +186,8 @@ approvals 文件示例：
 - 哪些内容可以低风险复制。
 - 哪些内容需要确认或手动转换。
 - 哪些内容不适合迁移，以及为什么。
-- 哪些目标文件已经存在冲突。
+- 哪些目标已有内容需要更新或合并。
+- 哪些项目存在明确冲突，以及冲突理由。
 - 哪些字段未知、不支持或只适合报告。
 - 如果请求全项目 memory 扫描，会列出已知项目中的 `CLAUDE.md` / `CLAUDE.local.md` 和 `.claude/projects/.../memory/*.md` 迁移计划。
 
