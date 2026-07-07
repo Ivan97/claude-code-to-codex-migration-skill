@@ -76,7 +76,9 @@ When reporting inspector counts such as `migratable`, `updates`, `needsDecision`
 
 Do not add these counts together as if they were unique resource totals. One resource can appear in multiple categories, such as an existing memory file appearing in both `updates` and `needsDecision`.
 
-Conflict disclaimer: `conflicts: 0` means only that the current inspector did not prove an explicit conflict. It does not prove that no real-world conflict exists. The inspector is conservative: target existence, same file path, same MCP server name, or same directory entry is an update candidate unless content or metadata comparison proves an inconsistency. Textual memory, hooks, permissions, and some MCP/settings differences may still require human review through the resolver diff.
+Review guidance: all inspector counts are agent-generated classifications based on the current migration contract and available files. They are decision aids, not authoritative proof. The counts may be incomplete, conservative, or different from how a human maintainer would classify the same project using domain knowledge. Review every category with the generated plan and resolver diff before approving writes, especially memory text, hooks, permissions, MCP servers, settings, and plugin-related entries.
+
+The migration process is designed to be auditable and recoverable: inspection and diff are read-only, source files are never moved or deleted, and approved writes create backups for existing targets under `.codex-migration-backups/` by default. Even if an entry is classified imperfectly, the workflow should preserve the original information and provide enough history to compare, roll back, or manually merge.
 
 ## Migration Plan Format
 

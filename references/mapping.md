@@ -81,7 +81,9 @@ Inspector summary numbers count migration plan entries. They are not necessarily
 
 Do not sum these fields as unique resource totals. A single resource can appear in multiple categories, such as both `updates` and `needsDecision`.
 
-Disclaimer: `conflicts: 0` means only that the current inspector did not prove an explicit conflict. It does not prove there are no real-world conflicts. The inspector is conservative; target existence, same file path, same MCP server name, or same directory entry is an update candidate unless comparison proves inconsistency. Textual memory, hooks, permissions, and some MCP/settings differences still require resolver diff review and user judgment.
+Review guidance: all inspector counts are agent-generated classifications based on this migration contract and currently available files. They are decision aids, not authoritative proof. The counts may be incomplete, conservative, or different from how a human maintainer would classify the same project using project knowledge. Review every category with the generated plan and resolver diff before approving writes, especially memory text, hooks, permissions, MCP servers, settings, and plugin-related entries.
+
+The migration workflow is designed to be auditable and recoverable: inspection and diff are read-only, Claude Code source files are never moved or deleted, and approved writes create backups for existing targets under `.codex-migration-backups/` by default. Even when a classification is imperfect, the original information should remain available for comparison, rollback, or manual merge.
 
 ## Migration Plan Requirements
 
