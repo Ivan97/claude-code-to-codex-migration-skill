@@ -109,6 +109,22 @@ node <skill-dir>/scripts/resolve-migration.mjs apply --plan plan.json --approval
 
 仅仅“目标文件已存在”“同名 MCP server 已存在”“同路径文件已存在”不等于冲突；这些默认是更新候选，需要对比和用户确认。
 
+## 统计字段说明
+
+inspector 输出里的数字单位是迁移计划条目，不一定是文件数、最终步骤数，也不一定互斥。一个资源可能同时出现在多个分类里，例如已有目标的 memory 既是 `updates`，也需要用户确认，所以也会出现在 `needsDecision`。
+
+- `migratable`：目标不存在，通常可低风险复制或创建的条目。
+- `updates`：目标或相关信息已存在，可能需要追加、合并、替换、重命名或改变的条目。
+- `needsDecision`：需要用户确认的条目，包括更新、高风险资源、敏感字段、本地作用域选择和非等价转换。
+- `conflicts`：当前 inspector 已明确证明存在同一语义或元信息位置不一致、对立或取值不同的条目。
+- `reportOnly`：只报告、不自动迁移的条目。
+- `unsupported`：已知不支持的结构或字段。
+- `unknown`：迁移协议未覆盖、意义未知的字段。
+- `emptySkipped`：按策略跳过的空对象、空数组或 null。
+- `pluginPlan`：插件或 marketplace 候选计划条目，不代表已经安装。
+
+免责声明：`conflicts: 0` 只表示当前 inspector 没有证明存在明确冲突，不等于客观上没有冲突。目标存在、同名 MCP server、同路径文件默认是更新候选；文本 memory、hooks、permissions 以及部分 MCP/settings 差异仍需要通过 resolver diff 和人工确认来判断。
+
 ## 能力边界
 
 这个 skill 能做：

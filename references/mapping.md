@@ -63,6 +63,26 @@ Use these labels consistently in plans, diffs, and final reports:
 
 Do not classify a target merely existing as a conflict. Same path, same MCP server name, or same file name is an update candidate unless content or metadata comparison proves an actual inconsistency. Unknown or uncertain differences are updates, not conflicts.
 
+## Inspector Count Semantics
+
+Inspector summary numbers count migration plan entries. They are not necessarily file counts, final step counts, or mutually exclusive resource counts.
+
+| Field | Meaning |
+|---|---|
+| `migratable` | Target does not exist; the entry can usually be copied or created with low risk after confirmation. |
+| `updates` | Target or related information already exists; migration may append, merge, replace, rename, or otherwise change it. |
+| `needsDecision` | User confirmation is required; this includes updates, high-risk resources, sensitive fields, local-scope choices, and non-equivalent conversions. |
+| `conflicts` | The current inspector explicitly proved an inconsistency, opposition, or different value at the same semantic or metadata location. |
+| `reportOnly` | Show the entry to the user but do not automatically migrate it. |
+| `unsupported` | Known unsupported shape or field. |
+| `unknown` | Field or meaning is not covered by this migration contract. |
+| `emptySkipped` | Empty object, empty array, or null skipped by policy. |
+| `pluginPlan` | Plugin or marketplace candidate plan; this does not imply installation. |
+
+Do not sum these fields as unique resource totals. A single resource can appear in multiple categories, such as both `updates` and `needsDecision`.
+
+Disclaimer: `conflicts: 0` means only that the current inspector did not prove an explicit conflict. It does not prove there are no real-world conflicts. The inspector is conservative; target existence, same file path, same MCP server name, or same directory entry is an update candidate unless comparison proves inconsistency. Textual memory, hooks, permissions, and some MCP/settings differences still require resolver diff review and user judgment.
+
 ## Migration Plan Requirements
 
 Every migration plan must be numbered and explicit:

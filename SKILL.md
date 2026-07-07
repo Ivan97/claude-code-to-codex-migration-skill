@@ -60,6 +60,24 @@ Use `--format json` when a structured diff is easier to process. The diff must b
 JSON diff output uses `{ "entries": [...] }`. Treat `entries` as the only supported resolver diff array for this skill version.
 Each diff entry includes `changeType`: `add`, `update`, `delete`, or `conflict`. `add` means the target does not exist and is not a conflict. `update` means the target exists or existing information may change, but no explicit contradiction has been proven. `delete` means the source is missing or inaccessible. `conflict` is reserved for cases where the new information and existing metadata or content are explicitly inconsistent, opposed, or different. If the skill cannot clearly prove a conflict, describe the item as an update.
 
+## Inspector Count Semantics
+
+When reporting inspector counts such as `migratable`, `updates`, `needsDecision`, `conflicts`, `reportOnly`, `unknown`, or `pluginPlan`, state that the unit is migration plan entries. These counts are not necessarily files, final steps, or mutually exclusive resources.
+
+- `migratable`: entries whose target does not exist and can usually be copied or created with low risk after confirmation.
+- `updates`: entries where a target or related information already exists and migration may append, merge, replace, rename, or otherwise change it.
+- `needsDecision`: entries that require user confirmation, including updates, high-risk resources, sensitive fields, local-scope choices, and non-equivalent conversions.
+- `conflicts`: entries that the current inspector has explicitly proven to be inconsistent, opposed, or different at the same semantic or metadata location.
+- `reportOnly`: entries that should be shown to the user but not automatically migrated.
+- `unsupported`: entries with known unsupported shapes or fields.
+- `unknown`: entries whose field or meaning is not covered by the migration contract.
+- `emptySkipped`: empty arrays, empty objects, or null values skipped by policy.
+- `pluginPlan`: plugin or marketplace candidate entries; these are plans only and do not imply installation.
+
+Do not add these counts together as if they were unique resource totals. One resource can appear in multiple categories, such as an existing memory file appearing in both `updates` and `needsDecision`.
+
+Conflict disclaimer: `conflicts: 0` means only that the current inspector did not prove an explicit conflict. It does not prove that no real-world conflict exists. The inspector is conservative: target existence, same file path, same MCP server name, or same directory entry is an update candidate unless content or metadata comparison proves an inconsistency. Textual memory, hooks, permissions, and some MCP/settings differences may still require human review through the resolver diff.
+
 ## Migration Plan Format
 
 Use this structure when presenting the plan:
